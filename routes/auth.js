@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const axios = require('axios');
 const { validate, registerSchema, loginSchema, profileSchema } = require('../middleware/validate');
 const { authMiddleware } = require('../middleware/auth');
 const { sendVerificationEmail, sendResetPasswordEmail } = require('../utils/email');
@@ -11,7 +12,17 @@ const router = express.Router();
 
 router.post('/register', validate(registerSchema), async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, recaptchaToken } = req.body;
+
+    // Verify reCAPTCHA
+    if (process.env.RECAPTCHA_SECRET_KEY && process.env.RECAPTCHA_SECRET_KEY !== 'placeholder') {
+      const response = await axios.post(
+        `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
+      );
+      if (!response.data.success) {
+        return res.status(400).json({ message: 'reCAPTCHA verification failed.' });
+      }
+    }
 
     const existing = await User.findOne({ email });
     if (existing) return res.status(400).json({ message: 'Email already registered.' });
@@ -43,7 +54,17 @@ router.post('/register', validate(registerSchema), async (req, res, next) => {
 
 router.post('/login', validate(loginSchema), async (req, res, next) => {
   try {
-    const { email: identifier, password } = req.body;
+    const { email: identifier, password, recaptchaToken } = req.body;
+
+    // Verify reCAPTCHA
+    if (process.env.RECAPTCHA_SECRET_KEY && process.env.RECAPTCHA_SECRET_KEY !== 'placeholder') {
+      const response = await axios.post(
+        `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
+      );
+      if (!response.data.success) {
+        return res.status(400).json({ message: 'reCAPTCHA verification failed.' });
+      }
+    }
 
     const user = await User.findOne({ 
       $or: [{ email: identifier }, { name: identifier }] 
