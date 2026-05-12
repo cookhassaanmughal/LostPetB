@@ -12,6 +12,8 @@ const userSchema = new mongoose.Schema(
     avatar: { type: String, trim: true },
     isVerified: { type: Boolean, default: false },
     verificationToken: { type: String },
+    resetPasswordToken: { type: String },
+    resetPasswordExpires: { type: Date },
     favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Listing' }],
     savedCard: {
       number: String,
