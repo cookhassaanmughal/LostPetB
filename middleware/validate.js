@@ -17,11 +17,13 @@ const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  recaptchaToken: z.string().optional(),
 });
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
+  email: z.string().min(1, "Email or Name is required"),
   password: z.string().min(1, "Password is required"),
+  recaptchaToken: z.string().optional(),
 });
 
 const listingSchema = z.object({
@@ -37,12 +39,14 @@ const listingSchema = z.object({
   contactInfo: z.string().optional(),
   images: z.array(z.string()).optional(),
   status: z.enum(['Active', 'Resolved', 'Adopted']).optional().default('Active'),
+  recaptchaToken: z.string().optional(),
 });
 
 const messageSchema = z.object({
   receiver: z.string(), // Object ID
   listing: z.string(), // Object ID
   content: z.string().min(1, "Message content cannot be empty"),
+  recaptchaToken: z.string().optional(),
 });
 
 const profileSchema = z.object({

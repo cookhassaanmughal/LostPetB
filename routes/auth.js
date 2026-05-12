@@ -16,11 +16,17 @@ router.post('/register', validate(registerSchema), async (req, res, next) => {
 
     // Verify reCAPTCHA
     if (process.env.RECAPTCHA_SECRET_KEY && process.env.RECAPTCHA_SECRET_KEY !== 'placeholder') {
-      const response = await axios.post(
-        `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
-      );
-      if (!response.data.success) {
-        return res.status(400).json({ message: 'reCAPTCHA verification failed.' });
+      try {
+        const response = await axios.post(
+          `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
+        );
+        console.log('reCAPTCHA Response:', response.data);
+        if (!response.data.success) {
+          return res.status(400).json({ message: 'reCAPTCHA verification failed. ' + (response.data['error-codes']?.join(', ') || '') });
+        }
+      } catch (recaptchaError) {
+        console.error('reCAPTCHA Error:', recaptchaError.message);
+        return res.status(400).json({ message: 'reCAPTCHA service error.' });
       }
     }
 
@@ -58,11 +64,17 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
 
     // Verify reCAPTCHA
     if (process.env.RECAPTCHA_SECRET_KEY && process.env.RECAPTCHA_SECRET_KEY !== 'placeholder') {
-      const response = await axios.post(
-        `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
-      );
-      if (!response.data.success) {
-        return res.status(400).json({ message: 'reCAPTCHA verification failed.' });
+      try {
+        const response = await axios.post(
+          `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
+        );
+        console.log('Login reCAPTCHA Response:', response.data);
+        if (!response.data.success) {
+          return res.status(400).json({ message: 'reCAPTCHA verification failed. ' + (response.data['error-codes']?.join(', ') || '') });
+        }
+      } catch (recaptchaError) {
+        console.error('Login reCAPTCHA Error:', recaptchaError.message);
+        return res.status(400).json({ message: 'reCAPTCHA service error.' });
       }
     }
 
