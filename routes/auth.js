@@ -4,6 +4,8 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { validate, registerSchema, loginSchema, profileSchema } = require('../middleware/validate');
 const { authMiddleware } = require('../middleware/auth');
+const { sendVerificationEmail } = require('../utils/email');
+const crypto = require('crypto');
 
 const router = express.Router();
 
@@ -15,15 +17,24 @@ router.post('/register', validate(registerSchema), async (req, res, next) => {
     if (existing) return res.status(400).json({ message: 'Email already registered.' });
 
     const hashed = await bcrypt.hash(password, 10);
-    const user = await User.create({ name, email, password: hashed });
+    const verificationToken = crypto.randomBytes(32).toString('hex');
 
-    const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET || 'secret', {
-      expiresIn: '7d',
+    const user = await User.create({ 
+      name, 
+      email, 
+      password: hashed,
+      verificationToken 
     });
 
+    try {
+      await sendVerificationEmail(email, verificationToken);
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      // We still created the user, but they'll need to resend verification later if needed
+    }
+
     res.status(201).json({
-      user: { id: user._id, name: user.name, email: user.email, isNGO: user.isNGO, isAdmin: user.isAdmin, isVerifiedNGO: user.isVerifiedNGO, avatar: user.avatar, description: user.description },
-      token,
+      message: 'Registration successful! Please check your email to verify your account.'
     });
   } catch (error) {
     next(error);
@@ -39,6 +50,10 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
     });
     if (!user) return res.status(400).json({ message: 'Invalid credentials.' });
 
+    if (!user.isVerified) {
+      return res.status(401).json({ message: 'Please verify your email address before logging in.' });
+    }
+
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(400).json({ message: 'Invalid credentials.' });
 
@@ -50,6 +65,24 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
       user: { id: user._id, name: user.name, email: user.email, isNGO: user.isNGO, isAdmin: user.isAdmin, isVerifiedNGO: user.isVerifiedNGO, avatar: user.avatar, description: user.description },
       token,
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/verify-email', async (req, res, next) => {
+  try {
+    const { token } = req.query;
+    if (!token) return res.status(400).json({ message: 'Verification token is required.' });
+
+    const user = await User.findOne({ verificationToken: token });
+    if (!user) return res.status(400).json({ message: 'Invalid or expired verification token.' });
+
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    await user.save();
+
+    res.json({ message: 'Email verified successfully! You can now log in.' });
   } catch (error) {
     next(error);
   }

@@ -16,8 +16,8 @@ const seedAdmin = async () => {
 
     if (existing) {
       console.log('Admin already exists. Updating password...');
-      existing.password = await bcrypt.hash('admin123', 10);
       existing.isAdmin = true;
+      existing.isVerified = true;
       await existing.save();
     } else {
       console.log('Creating new admin...');
@@ -25,7 +25,8 @@ const seedAdmin = async () => {
         name: 'Admin',
         email: adminEmail,
         password: await bcrypt.hash('admin123', 10),
-        isAdmin: true
+        isAdmin: true,
+        isVerified: true
       });
     }
 
