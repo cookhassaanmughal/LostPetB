@@ -58,13 +58,14 @@ const seed = async () => {
       email: 'admin@example.com',
       password: adminPassword,
       isAdmin: true,
-      isVerifiedNGO: true
+      isVerifiedNGO: true,
+      isVerified: true
     });
     console.log('Created Admin account (admin@example.com / admin123)');
 
     // Create NGOs
     const ngos = await Promise.all(
-      NGO_DATA.map(ngo => User.create({ ...ngo, password, isNGO: true, isVerifiedNGO: true }))
+      NGO_DATA.map(ngo => User.create({ ...ngo, password, isNGO: true, isVerifiedNGO: true, isVerified: true }))
     );
     console.log(`Created ${ngos.length} NGO accounts.`);
 
