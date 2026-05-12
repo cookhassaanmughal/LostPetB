@@ -111,7 +111,18 @@ router.get('/verify-email', async (req, res, next) => {
 
 router.post('/forgot-password', async (req, res, next) => {
   try {
-    const { email } = req.body;
+    const { email, recaptchaToken } = req.body;
+
+    // Verify reCAPTCHA
+    if (process.env.RECAPTCHA_SECRET_KEY && process.env.RECAPTCHA_SECRET_KEY !== 'placeholder') {
+      const response = await axios.post(
+        `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
+      );
+      if (!response.data.success) {
+        return res.status(400).json({ message: 'reCAPTCHA verification failed.' });
+      }
+    }
+
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: 'No user found with this email address.' });
 
