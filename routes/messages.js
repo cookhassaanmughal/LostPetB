@@ -3,6 +3,7 @@ const Message = require('../models/Message');
 const { authMiddleware } = require('../middleware/auth');
 const { validate, messageSchema } = require('../middleware/validate');
 const Listing = require('../models/Listing');
+const axios = require('axios');
 
 const router = express.Router();
 
@@ -25,8 +26,18 @@ router.get('/inbox', authMiddleware, async (req, res, next) => {
 // Send a message
 router.post('/', authMiddleware, validate(messageSchema), async (req, res, next) => {
   try {
-    const { receiver, listing, content } = req.body;
+    const { receiver, listing, content, recaptchaToken } = req.body;
     
+    // Verify reCAPTCHA
+    if (process.env.RECAPTCHA_SECRET_KEY && process.env.RECAPTCHA_SECRET_KEY !== 'placeholder') {
+      const response = await axios.post(
+        `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
+      );
+      if (!response.data.success) {
+        return res.status(400).json({ message: 'reCAPTCHA verification failed.' });
+      }
+    }
+
     // Verify listing exists
     const existingListing = await Listing.findById(listing);
     if (!existingListing) {

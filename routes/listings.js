@@ -2,6 +2,7 @@ const express = require('express');
 const Listing = require('../models/Listing');
 const { authMiddleware } = require('../middleware/auth');
 const { validate, listingSchema } = require('../middleware/validate');
+const axios = require('axios');
 
 const router = express.Router();
 
@@ -101,7 +102,18 @@ router.get('/:id/matches', async (req, res, next) => {
 
 router.post('/', authMiddleware, validate(listingSchema), async (req, res, next) => {
   try {
-    const body = req.body;
+    const { recaptchaToken, ...body } = req.body;
+
+    // Verify reCAPTCHA
+    if (process.env.RECAPTCHA_SECRET_KEY && process.env.RECAPTCHA_SECRET_KEY !== 'placeholder') {
+      const response = await axios.post(
+        `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
+      );
+      if (!response.data.success) {
+        return res.status(400).json({ message: 'reCAPTCHA verification failed.' });
+      }
+    }
+
     const listing = await Listing.create({ ...body, owner: req.user.id });
     res.status(201).json(listing);
   } catch (error) {
@@ -115,7 +127,19 @@ router.put('/:id', authMiddleware, validate(listingSchema), async (req, res, nex
     if (!listing) return res.status(404).json({ message: 'Listing not found.' });
     if (String(listing.owner) !== req.user.id) return res.status(403).json({ message: 'Unauthorized.' });
 
-    Object.assign(listing, req.body);
+    const { recaptchaToken, ...body } = req.body;
+
+    // Verify reCAPTCHA
+    if (process.env.RECAPTCHA_SECRET_KEY && process.env.RECAPTCHA_SECRET_KEY !== 'placeholder') {
+      const response = await axios.post(
+        `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
+      );
+      if (!response.data.success) {
+        return res.status(400).json({ message: 'reCAPTCHA verification failed.' });
+      }
+    }
+
+    Object.assign(listing, body);
     await listing.save();
     res.json(listing);
   } catch (error) {
